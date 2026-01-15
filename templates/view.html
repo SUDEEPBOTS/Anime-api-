@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ anime.title }}</title>
+    <title>{{ anime.title }} | Open Link</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,7 +34,7 @@
 
         /* Main Card Container */
         .card-container {
-            background: #0a0a0a; /* Dark background */
+            background: #0a0a0a;
             width: 100%;
             max-width: 850px;
             border-radius: 24px;
@@ -44,6 +44,7 @@
             display: flex;
             gap: 40px;
             align-items: flex-start;
+            position: relative;
         }
 
         /* LEFT SIDE: POSTER */
@@ -52,7 +53,7 @@
             width: 240px;
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid rgba(255, 215, 0, 0.15); /* Subtle Gold Border */
+            border: 1px solid rgba(255, 215, 0, 0.15);
             box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
         .poster-box img { width: 100%; height: auto; display: block; }
@@ -64,11 +65,11 @@
             flex-direction: column;
         }
 
-        /* Title & Text */
+        /* Typography */
         h1 {
             font-family: 'Cinzel', serif;
             font-size: 32px;
-            color: #d4c598; /* Muted Gold Color */
+            color: #d4c598;
             margin-bottom: 5px;
             font-weight: 400;
         }
@@ -79,70 +80,97 @@
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
         }
 
-        /* TAGS (Mocking the screenshot look) */
+        /* Visual Tags */
         .tags-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .tag {
             background: #111; border: 1px solid #222;
             color: #888; padding: 4px 12px; border-radius: 20px;
             font-size: 11px; display: flex; align-items: center; gap: 5px;
         }
-        .tag span { color: #666; font-size: 10px; }
 
-        /* SECTIONS */
+        /* SECTIONS Label */
         .label {
             font-size: 11px; color: #fff; font-weight: 700; letter-spacing: 1px;
             margin-top: 25px; margin-bottom: 12px; text-transform: uppercase;
         }
 
-        /* BUTTONS (STATS ROW) */
+        /* MAIN BUTTONS (OPEN & SUPPORT) */
         .btns-stack { display: flex; flex-direction: column; gap: 12px; }
         
         .btn-main {
             width: 100%; padding: 14px; border-radius: 30px;
-            text-align: center; font-size: 14px; font-weight: 500; text-transform: uppercase;
+            text-align: center; font-size: 14px; font-weight: 600; text-transform: uppercase;
             text-decoration: none; border: none; cursor: pointer; transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
 
-        /* Blue Gradient Button */
-        .btn-watch {
+        /* OPEN Button (Blue) */
+        .btn-open {
             background: linear-gradient(90deg, #355c7d, #6c5b7b);
             color: white;
             box-shadow: 0 4px 15px rgba(53, 92, 125, 0.3);
         }
-        .btn-watch:hover { filter: brightness(1.1); }
+        .btn-open:hover { filter: brightness(1.1); transform: translateY(-2px); }
 
-        /* Glass Red Button */
-        .btn-glass {
-            background: rgba(20, 10, 10, 0.5);
-            color: #aaa;
+        /* SUPPORT Button (Glass Red) */
+        .btn-support {
+            background: rgba(20, 10, 10, 0.6);
+            color: #e0e0e0;
             border: 1px solid rgba(255, 60, 60, 0.2);
             box-shadow: 0 0 15px rgba(255, 0, 0, 0.05);
             backdrop-filter: blur(5px);
         }
-        .btn-glass:hover { border-color: rgba(255, 60, 60, 0.5); color: white; }
+        .btn-support:hover { border-color: rgba(255, 60, 60, 0.6); color: white; background: rgba(40, 10, 10, 0.8); }
 
-        /* ACTIONS GRID (The Icons) */
+        /* ACTIONS GRID (Stats) */
         .grid-actions {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
         }
         
-        .icon-btn {
-            height: 45px; background: #111; border: 1px solid #222; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            color: #777; font-size: 18px; cursor: pointer; transition: 0.3s;
+        .stat-btn {
+            height: 50px; background: #111; border: 1px solid #222; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #777; font-size: 12px; cursor: pointer; transition: 0.3s;
+            text-decoration: none;
         }
-        .icon-btn:hover { border-color: #444; color: white; }
+        .stat-btn span { font-size: 16px; margin-bottom: 2px; }
+        .stat-btn b { font-weight: normal; font-size: 10px; color: #555; }
+        
+        .stat-btn:hover { border-color: #444; color: white; background: #1a1a1a; }
+        .stat-btn:hover b { color: #aaa; }
 
-        /* Specific Report Buttons */
-        .btn-rep-outline { font-size: 12px; text-transform: capitalize; }
-        .btn-rep-red { 
-            font-size: 12px; text-transform: capitalize; 
-            color: #ff4444; background: rgba(30, 10, 10, 0.8); border-color: rgba(255, 68, 68, 0.2); 
+        /* Special colors for actions */
+        .btn-like:active { color: #ff4d6d; border-color: #ff4d6d; }
+        .btn-dislike:active { color: #ccc; }
+
+        /* CONTACT & OWNER ROW */
+        .footer-btns-row {
+            display: flex; gap: 10px; margin-top: 25px;
+        }
+        .btn-footer {
+            flex: 1; padding: 10px; border-radius: 8px; font-size: 11px; text-transform: uppercase;
+            text-align: center; text-decoration: none; color: #aaa; background: #0f0f0f;
+            border: 1px solid #222; transition: 0.3s;
+        }
+        .btn-footer:hover { background: #1a1a1a; color: white; border-color: #444; }
+        
+        .btn-owner {
+            border-color: rgba(212, 197, 152, 0.3); color: #d4c598;
+        }
+        .btn-owner:hover { background: rgba(212, 197, 152, 0.1); border-color: #d4c598; }
+
+        /* COLORFUL THANKS MESSAGE */
+        .thanks-msg {
+            margin-top: 30px; text-align: center; font-size: 14px; font-weight: 600;
+            background: linear-gradient(to right, #ff00cc, #3333ff, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0.9; letter-spacing: 1px;
         }
 
-        /* FOOTER RED TEXT */
-        .footer-text {
-            margin-top: 30px; font-size: 10px; color: #d64545; line-height: 1.4; opacity: 0.9;
+        /* Disclaimer Small */
+        .disclaimer-small {
+            margin-top: 10px; font-size: 9px; color: #444; text-align: center;
         }
 
         /* MOBILE FIX */
@@ -151,7 +179,7 @@
             .poster-box { width: 180px; margin-bottom: 20px; }
             .info-box { width: 100%; }
             .tags-row { justify-content: center; }
-            .desc { -webkit-line-clamp: 5; }
+            .grid-actions { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
@@ -168,59 +196,82 @@
         <div class="info-box">
             
             <h1>{{ anime.title }}</h1>
-            <div class="subtitle">thumbnail version</div>
+            <div class="subtitle">Search Result</div>
             
             <p class="desc">{{ anime.synopsis }}</p>
 
             <div class="tags-row">
-                <div class="tag">p story</div>
-                <div class="tag"><span>★</span> 20</div>
-                <div class="tag">6p</div>
-                <div class="tag">6ccc</div>
-            </div>
-            <div class="tags-row">
-                <div class="tag">⚡ fade Up</div>
-                <div class="tag">⏱ fte0230</div>
+                <div class="tag">HD Quality</div>
+                <div class="tag">Dual Audio</div>
+                <div class="tag">Telegram</div>
             </div>
 
-            <div class="label">STATS ROW</div>
+            <div class="label">LINKS</div>
             <div class="btns-stack">
-                <a href="{{ anime.telegram_link }}" target="_blank" class="btn-main btn-watch">
-                    Watch-btn
+                <a href="{{ anime.telegram_link }}" target="_blank" class="btn-main btn-open">
+                    OPEN 🚀
                 </a>
-                <button class="btn-main btn-glass">
-                    glass-btn
-                </button>
-            </div>
-
-            <div class="label">ACTIONS</div>
-            <div class="grid-actions">
-                <div class="icon-btn">≡</div>   <div class="icon-btn">↓</div>   <div class="icon-btn">⤢</div>   <div class="icon-btn" onclick="sendAction('likes')">⊕</div>
                 
-                <div class="icon-btn btn-rep-outline" onclick="sendAction('reports')">Report</div>
-                <div class="icon-btn btn-rep-red" onclick="sendAction('reports')">report</div>
+                <a href="https://t.me/SPSUPPORTT1" target="_blank" class="btn-main btn-support">
+                    SUPPORT 🛠️
+                </a>
             </div>
 
-            <div class="footer-text">
-                Trom tn ints color color vene 0.22<br>
-                mare coilld solnd 1S sotiort 0.3s franid 0.2<br>
-                opaigH.<br>
-                0.8.8
+            <div class="label">ACTIONS & STATS</div>
+            <div class="grid-actions">
+                <div class="stat-btn">
+                    <span>👁️</span>
+                    <b id="view-cnt">{{ anime.views }}</b>
+                </div>
+
+                <div class="stat-btn btn-like" onclick="act('likes')">
+                    <span>👍</span>
+                    <b id="like-cnt">{{ anime.likes }}</b>
+                </div>
+
+                <div class="stat-btn btn-dislike" onclick="act('dislikes')">
+                    <span>👎</span>
+                    <b id="dislike-cnt">{{ anime.dislikes }}</b>
+                </div>
+                
+                <div class="stat-btn" onclick="act('reports')" style="color: #ff4444;">
+                    <span>⚠️</span>
+                    <b>Report</b>
+                </div>
+            </div>
+
+            <div class="footer-btns-row">
+                <a href="#" class="btn-footer">Contact</a> <a href="https://t.me/Kaito_3_2" target="_blank" class="btn-footer btn-owner">Owner 👑</a>
+            </div>
+
+            <div class="thanks-msg">
+                Thank You For Visiting! ❤️
+            </div>
+            
+            <div class="disclaimer-small">
+                We do not host any content. All links are from Google.
             </div>
 
         </div>
     </div>
 
     <script>
-        // Silent API Call function
-        function sendAction(actionType) {
+        function act(action) {
             const slug = window.location.pathname.split("/").pop();
-            fetch(`/api/action/${slug}/${actionType}`, { method: 'POST' })
-            .then(() => {
-                // Optional: Chota sa visual feedback bina alert ke
-                if(actionType === 'likes') alert("Added +"); 
-                if(actionType === 'reports') alert("Reported!");
-            })
+            
+            // Visual Update (Fake Instant Update)
+            if(action === 'likes') {
+                const el = document.getElementById('like-cnt');
+                el.innerText = parseInt(el.innerText) + 1;
+            } else if (action === 'dislikes') {
+                const el = document.getElementById('dislike-cnt');
+                el.innerText = parseInt(el.innerText) + 1;
+            } else if (action === 'reports') {
+                alert("Report Sent to Admin! 🛡️");
+            }
+
+            // Backend Call
+            fetch(`/api/action/${slug}/${action}`, { method: 'POST' })
             .catch(err => console.error(err));
         }
     </script>
