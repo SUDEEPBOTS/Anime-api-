@@ -135,7 +135,7 @@ async def search_anime(query: str):
     try:
         chat = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": f"Extract official anime name from '{query}'. Output ONLY name."}],
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
         )
         ai_name = chat.choices[0].message.content.strip()
     except: ai_name = query
