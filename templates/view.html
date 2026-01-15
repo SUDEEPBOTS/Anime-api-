@@ -131,7 +131,7 @@
             height: 50px; background: #111; border: 1px solid #222; border-radius: 12px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             color: #777; font-size: 12px; cursor: pointer; transition: 0.3s;
-            text-decoration: none;
+            text-decoration: none; user-select: none;
         }
         .stat-btn span { font-size: 16px; margin-bottom: 2px; }
         .stat-btn b { font-weight: normal; font-size: 10px; color: #555; }
@@ -139,9 +139,12 @@
         .stat-btn:hover { border-color: #444; color: white; background: #1a1a1a; }
         .stat-btn:hover b { color: #aaa; }
 
-        /* Special colors for actions */
-        .btn-like:active { color: #ff4d6d; border-color: #ff4d6d; }
-        .btn-dislike:active { color: #ccc; }
+        /* --- ACTIVE STATES FOR LIKE/DISLIKE (NEW) --- */
+        .btn-like.active { border-color: #4CAF50; color: #4CAF50; background: rgba(76, 175, 80, 0.1); }
+        .btn-like.active b { color: #4CAF50; }
+
+        .btn-dislike.active { border-color: #ff4d6d; color: #ff4d6d; background: rgba(255, 77, 109, 0.1); }
+        .btn-dislike.active b { color: #ff4d6d; }
 
         /* CONTACT & OWNER ROW */
         .footer-btns-row {
@@ -259,20 +262,58 @@
         function act(action) {
             const slug = window.location.pathname.split("/").pop();
             
-            // Visual Update (Fake Instant Update)
-            if(action === 'likes') {
-                const el = document.getElementById('like-cnt');
-                el.innerText = parseInt(el.innerText) + 1;
-            } else if (action === 'dislikes') {
-                const el = document.getElementById('dislike-cnt');
-                el.innerText = parseInt(el.innerText) + 1;
-            } else if (action === 'reports') {
-                alert("Report Sent to Admin! 🛡️");
-            }
+            // Elements select kar rahe hain
+            const likeBtn = document.querySelector('.btn-like');
+            const dislikeBtn = document.querySelector('.btn-dislike');
+            const likeCount = document.getElementById('like-cnt');
+            const dislikeCount = document.getElementById('dislike-cnt');
 
-            // Backend Call
+            // Backend ko call karo
             fetch(`/api/action/${slug}/${action}`, { method: 'POST' })
-            .catch(err => console.error(err));
+            .then(res => res.json())
+            .then(data => {
+                let l_val = parseInt(likeCount.innerText);
+                let d_val = parseInt(dislikeCount.innerText);
+
+                // --- LOGIC TO UPDATE UI INSTANTLY BASED ON BACKEND RESPONSE ---
+                
+                if (data.status === 'liked') {
+                    // New Like: Like Badhao, Green karo
+                    likeCount.innerText = l_val + 1;
+                    likeBtn.classList.add('active');
+                    
+                    // Agar Dislike active tha, toh usko hatao
+                    if (dislikeBtn.classList.contains('active')) {
+                        dislikeCount.innerText = d_val - 1;
+                        dislikeBtn.classList.remove('active');
+                    }
+                } 
+                else if (data.status === 'removed_like') {
+                    // Like Undo kiya
+                    likeCount.innerText = l_val - 1;
+                    likeBtn.classList.remove('active');
+                }
+                else if (data.status === 'disliked') {
+                    // New Dislike: Dislike Badhao, Red karo
+                    dislikeCount.innerText = d_val + 1;
+                    dislikeBtn.classList.add('active');
+                    
+                    // Agar Like active tha, toh usko hatao
+                    if (likeBtn.classList.contains('active')) {
+                        likeCount.innerText = l_val - 1;
+                        likeBtn.classList.remove('active');
+                    }
+                }
+                else if (data.status === 'removed_dislike') {
+                    // Dislike Undo kiya
+                    dislikeCount.innerText = d_val - 1;
+                    dislikeBtn.classList.remove('active');
+                }
+                else if (data.status === 'reported') {
+                    alert("Report Sent to Admin! 🛡️");
+                }
+            })
+            .catch(err => console.error("Error:", err));
         }
     </script>
 
