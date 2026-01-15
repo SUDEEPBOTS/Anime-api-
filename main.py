@@ -32,20 +32,22 @@ def to_small_caps(text):
     }
     return "".join(mapping.get(char, char) for char in text.lower())
 
-# --- HELPER: TELEGRAM NOTIFICATION ---
+# --- HELPER: TELEGRAM NOTIFICATION (UPDATED) ---
 def send_telegram_log(title, thumbnail, synopsis, view_link):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_LOGGER_ID")
     
     if not token or not chat_id: return
 
-    sc_title = to_small_caps(title)
-    sc_synopsis = to_small_caps(synopsis[:200] + "...")
+    # Convert Synopsis to Small Caps
+    sc_synopsis = to_small_caps(synopsis[:250] + "...")
     
+    # HTML Caption: 
+    # 1. Title is the Blue Link
+    # 2. Story in Small Caps
     caption = (
-        f"<b><a href='{view_link}'>✨ {sc_title} ✨</a></b>\n\n"
-        f"📖 {sc_synopsis}\n\n"
-        f"🔗 <a href='{view_link}'>ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴡᴀᴛᴄʜ</a>"
+        f"<b><a href='{view_link}'>{title.upper()}</a></b>\n\n"
+        f"📖 {sc_synopsis}"
     )
 
     url = f"https://api.telegram.org/bot{token}/sendPhoto"
@@ -53,7 +55,8 @@ def send_telegram_log(title, thumbnail, synopsis, view_link):
         "chat_id": chat_id,
         "photo": thumbnail,
         "caption": caption,
-        "parse_mode": "HTML"
+        "parse_mode": "HTML",
+        "has_spoiler": True  # <--- Photo Spoiler (Blur) kar dega
     }
     try: requests.post(url, json=payload)
     except Exception as e: print(f"Telegram Log Error: {e}")
@@ -176,7 +179,7 @@ async def search_anime(query: str):
     
     await collection.insert_one(new_data)
     
-    # 5. SEND TELEGRAM LOG
+    # 5. SEND TELEGRAM LOG (SPOILER + LINKED TITLE)
     send_telegram_log(info['title'], info['image'], info['synopsis'], view_url)
 
     return {
@@ -287,6 +290,7 @@ async def add_anime_manual(
         data.update({"views": 0, "likes": 0, "dislikes": 0, "reports": 0, "liked_ips": [], "disliked_ips": []})
         await collection.insert_one(data)
     
+    # Log manually added anime too
     send_telegram_log(title, thumbnail, synopsis, view_url)
     return RedirectResponse(url="/admin", status_code=303)
 
