@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ anime.title }} | Download</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            background-color: #050505;
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* BACKGROUND BLUR */
+        .bg-image {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('{{ anime.thumbnail }}');
+            background-size: cover;
+            background-position: center;
+            filter: blur(15px) brightness(0.3);
+            z-index: -1;
+        }
+
+        /* MAIN CARD */
+        .card {
+            background: rgba(20, 20, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        .poster {
+            width: 150px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); /* Golden Glow */
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif; /* Aesthetic Font */
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            color: #f1f1f1;
+        }
+
+        p.story {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            font-variant: small-caps;
+        }
+
+        /* BUTTONS */
+        .btn-main {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #0088cc, #005f8f);
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 15px #0088cc; }
+
+        .actions { display: flex; justify-content: space-between; gap: 10px; }
+        
+        .btn-action {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-report { color: #ff4d4d; border: 1px solid #ff4d4d30; }
+
+        /* RED DISCLAIMER */
+        .disclaimer {
+            margin-top: 30px;
+            font-size: 10px;
+            color: #ff4444;
+            border-top: 1px solid #ff4444;
+            padding-top: 10px;
+            font-weight: bold;
+        }
+
+        .stats { margin-top: 10px; font-size: 10px; color: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="bg-image"></div>
+
+    <div class="card">
+        <img src="{{ anime.thumbnail }}" class="poster" alt="Poster">
+        <h1>{{ anime.title }}</h1>
+        <p class="story">{{ anime.synopsis }}</p>
+
+        <a href="{{ anime.telegram_link }}" target="_blank" class="btn-main">
+            Open Telegram 🚀
+        </a>
+
+        <div class="actions">
+            <button class="btn-action" onclick="act('likes')">👍 Like</button>
+            <button class="btn-action" onclick="act('dislikes')">👎 Dislike</button>
+            <button class="btn-action btn-report" onclick="act('reports')">⚠️ Report</button>
+        </div>
+
+        <div class="stats">
+            Views: {{ anime.views }} • Status: Active
+        </div>
+
+        <div class="disclaimer">
+            DISCLAIMER: WE DO NOT HOST ANY CONTENT. ALL LINKS ARE SEARCHED FROM GOOGLE.
+            IF A LINK IS BROKEN, PLEASE REPORT.
+        </div>
+    </div>
+
+    <script>
+        // Simple function to call API for actions
+        function act(action) {
+            // Slug URL se nikal rahe hain
+            const slug = window.location.pathname.split("/").pop();
+            fetch(`/api/action/${slug}/${action}`, { method: 'POST' })
+            .then(() => alert(action === 'reports' ? "Reported to Admin!" : "Thanks for feedback!"))
+            .catch(err => console.error(err));
+        }
+    </script>
+
+</body>
+</html>
