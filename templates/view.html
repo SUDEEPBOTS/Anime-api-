@@ -3,153 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ anime.title }} | Download</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@300;500&display=swap" rel="stylesheet">
+    <title>{{ anime.title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
-            background-color: #050505;
-            color: white;
-            font-family: 'Poppins', sans-serif;
-            height: 100vh;
+            background-color: #000;
+            color: #ccc;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            padding: 20px;
+            overflow-x: hidden;
         }
 
-        /* BACKGROUND BLUR */
+        /* Background Blur Image */
         .bg-image {
-            position: absolute;
+            position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background-image: url('{{ anime.thumbnail }}');
             background-size: cover;
             background-position: center;
-            filter: blur(15px) brightness(0.3);
+            filter: blur(40px) brightness(0.2);
+            transform: scale(1.2);
             z-index: -1;
         }
 
-        /* MAIN CARD */
-        .card {
-            background: rgba(20, 20, 20, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 30px;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 0 40px rgba(0,0,0,0.8);
-        }
-
-        .poster {
-            width: 150px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); /* Golden Glow */
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            font-family: 'Cinzel', serif; /* Aesthetic Font */
-            font-size: 24px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-            color: #f1f1f1;
-        }
-
-        p.story {
-            font-size: 12px;
-            color: #aaa;
-            margin-bottom: 25px;
-            line-height: 1.5;
-            font-variant: small-caps;
-        }
-
-        /* BUTTONS */
-        .btn-main {
-            display: block;
+        /* Main Card Container */
+        .card-container {
+            background: #0a0a0a; /* Dark background */
             width: 100%;
-            padding: 15px;
-            background: linear-gradient(45deg, #0088cc, #005f8f);
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            transition: 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            max-width: 850px;
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid #1f1f1f;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
         }
 
-        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 15px #0088cc; }
+        /* LEFT SIDE: POSTER */
+        .poster-box {
+            flex-shrink: 0;
+            width: 240px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 215, 0, 0.15); /* Subtle Gold Border */
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .poster-box img { width: 100%; height: auto; display: block; }
 
-        .actions { display: flex; justify-content: space-between; gap: 10px; }
+        /* RIGHT SIDE: INFO */
+        .info-box {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Title & Text */
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 32px;
+            color: #d4c598; /* Muted Gold Color */
+            margin-bottom: 5px;
+            font-weight: 400;
+        }
+        .subtitle { font-size: 14px; color: #666; margin-bottom: 20px; letter-spacing: 0.5px; }
         
-        .btn-action {
-            flex: 1;
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border: none;
+        .desc {
+            font-size: 13px; color: #aaa; line-height: 1.6; margin-bottom: 25px;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+
+        /* TAGS (Mocking the screenshot look) */
+        .tags-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .tag {
+            background: #111; border: 1px solid #222;
+            color: #888; padding: 4px 12px; border-radius: 20px;
+            font-size: 11px; display: flex; align-items: center; gap: 5px;
+        }
+        .tag span { color: #666; font-size: 10px; }
+
+        /* SECTIONS */
+        .label {
+            font-size: 11px; color: #fff; font-weight: 700; letter-spacing: 1px;
+            margin-top: 25px; margin-bottom: 12px; text-transform: uppercase;
+        }
+
+        /* BUTTONS (STATS ROW) */
+        .btns-stack { display: flex; flex-direction: column; gap: 12px; }
+        
+        .btn-main {
+            width: 100%; padding: 14px; border-radius: 30px;
+            text-align: center; font-size: 14px; font-weight: 500; text-transform: uppercase;
+            text-decoration: none; border: none; cursor: pointer; transition: 0.3s;
+        }
+
+        /* Blue Gradient Button */
+        .btn-watch {
+            background: linear-gradient(90deg, #355c7d, #6c5b7b);
             color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(53, 92, 125, 0.3);
+        }
+        .btn-watch:hover { filter: brightness(1.1); }
+
+        /* Glass Red Button */
+        .btn-glass {
+            background: rgba(20, 10, 10, 0.5);
+            color: #aaa;
+            border: 1px solid rgba(255, 60, 60, 0.2);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.05);
+            backdrop-filter: blur(5px);
+        }
+        .btn-glass:hover { border-color: rgba(255, 60, 60, 0.5); color: white; }
+
+        /* ACTIONS GRID (The Icons) */
+        .grid-actions {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+        }
+        
+        .icon-btn {
+            height: 45px; background: #111; border: 1px solid #222; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: #777; font-size: 18px; cursor: pointer; transition: 0.3s;
+        }
+        .icon-btn:hover { border-color: #444; color: white; }
+
+        /* Specific Report Buttons */
+        .btn-rep-outline { font-size: 12px; text-transform: capitalize; }
+        .btn-rep-red { 
+            font-size: 12px; text-transform: capitalize; 
+            color: #ff4444; background: rgba(30, 10, 10, 0.8); border-color: rgba(255, 68, 68, 0.2); 
         }
 
-        .btn-report { color: #ff4d4d; border: 1px solid #ff4d4d30; }
-
-        /* RED DISCLAIMER */
-        .disclaimer {
-            margin-top: 30px;
-            font-size: 10px;
-            color: #ff4444;
-            border-top: 1px solid #ff4444;
-            padding-top: 10px;
-            font-weight: bold;
+        /* FOOTER RED TEXT */
+        .footer-text {
+            margin-top: 30px; font-size: 10px; color: #d64545; line-height: 1.4; opacity: 0.9;
         }
 
-        .stats { margin-top: 10px; font-size: 10px; color: #555; }
+        /* MOBILE FIX */
+        @media (max-width: 700px) {
+            .card-container { flex-direction: column; align-items: center; text-align: center; padding: 25px; }
+            .poster-box { width: 180px; margin-bottom: 20px; }
+            .info-box { width: 100%; }
+            .tags-row { justify-content: center; }
+            .desc { -webkit-line-clamp: 5; }
+        }
     </style>
 </head>
 <body>
 
     <div class="bg-image"></div>
 
-    <div class="card">
-        <img src="{{ anime.thumbnail }}" class="poster" alt="Poster">
-        <h1>{{ anime.title }}</h1>
-        <p class="story">{{ anime.synopsis }}</p>
-
-        <a href="{{ anime.telegram_link }}" target="_blank" class="btn-main">
-            Open Telegram 🚀
-        </a>
-
-        <div class="actions">
-            <button class="btn-action" onclick="act('likes')">👍 Like</button>
-            <button class="btn-action" onclick="act('dislikes')">👎 Dislike</button>
-            <button class="btn-action btn-report" onclick="act('reports')">⚠️ Report</button>
+    <div class="card-container">
+        
+        <div class="poster-box">
+            <img src="{{ anime.thumbnail }}" alt="Poster">
         </div>
 
-        <div class="stats">
-            Views: {{ anime.views }} • Status: Active
-        </div>
+        <div class="info-box">
+            
+            <h1>{{ anime.title }}</h1>
+            <div class="subtitle">thumbnail version</div>
+            
+            <p class="desc">{{ anime.synopsis }}</p>
 
-        <div class="disclaimer">
-            DISCLAIMER: WE DO NOT HOST ANY CONTENT. ALL LINKS ARE SEARCHED FROM GOOGLE.
-            IF A LINK IS BROKEN, PLEASE REPORT.
+            <div class="tags-row">
+                <div class="tag">p story</div>
+                <div class="tag"><span>★</span> 20</div>
+                <div class="tag">6p</div>
+                <div class="tag">6ccc</div>
+            </div>
+            <div class="tags-row">
+                <div class="tag">⚡ fade Up</div>
+                <div class="tag">⏱ fte0230</div>
+            </div>
+
+            <div class="label">STATS ROW</div>
+            <div class="btns-stack">
+                <a href="{{ anime.telegram_link }}" target="_blank" class="btn-main btn-watch">
+                    Watch-btn
+                </a>
+                <button class="btn-main btn-glass">
+                    glass-btn
+                </button>
+            </div>
+
+            <div class="label">ACTIONS</div>
+            <div class="grid-actions">
+                <div class="icon-btn">≡</div>   <div class="icon-btn">↓</div>   <div class="icon-btn">⤢</div>   <div class="icon-btn" onclick="sendAction('likes')">⊕</div>
+                
+                <div class="icon-btn btn-rep-outline" onclick="sendAction('reports')">Report</div>
+                <div class="icon-btn btn-rep-red" onclick="sendAction('reports')">report</div>
+            </div>
+
+            <div class="footer-text">
+                Trom tn ints color color vene 0.22<br>
+                mare coilld solnd 1S sotiort 0.3s franid 0.2<br>
+                opaigH.<br>
+                0.8.8
+            </div>
+
         </div>
     </div>
 
     <script>
-        // Simple function to call API for actions
-        function act(action) {
-            // Slug URL se nikal rahe hain
+        // Silent API Call function
+        function sendAction(actionType) {
             const slug = window.location.pathname.split("/").pop();
-            fetch(`/api/action/${slug}/${action}`, { method: 'POST' })
-            .then(() => alert(action === 'reports' ? "Reported to Admin!" : "Thanks for feedback!"))
+            fetch(`/api/action/${slug}/${actionType}`, { method: 'POST' })
+            .then(() => {
+                // Optional: Chota sa visual feedback bina alert ke
+                if(actionType === 'likes') alert("Added +"); 
+                if(actionType === 'reports') alert("Reported!");
+            })
             .catch(err => console.error(err));
         }
     </script>
