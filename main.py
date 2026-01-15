@@ -39,11 +39,9 @@ def send_telegram_log(title, thumbnail, synopsis, view_link):
     
     if not token or not chat_id: return
 
-    # Text Formatting
     sc_title = to_small_caps(title)
     sc_synopsis = to_small_caps(synopsis[:200] + "...")
     
-    # HTML Caption
     caption = (
         f"<b><a href='{view_link}'>✨ {sc_title} ✨</a></b>\n\n"
         f"📖 {sc_synopsis}\n\n"
@@ -57,10 +55,8 @@ def send_telegram_log(title, thumbnail, synopsis, view_link):
         "caption": caption,
         "parse_mode": "HTML"
     }
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print(f"Telegram Log Error: {e}")
+    try: requests.post(url, json=payload)
+    except Exception as e: print(f"Telegram Log Error: {e}")
 
 # --- HELPER: GET USER IP ---
 def get_client_ip(request: Request):
@@ -68,25 +64,37 @@ def get_client_ip(request: Request):
     if x_forwarded: return x_forwarded.split(",")[0]
     return request.client.host
 
-# --- HELPER: GOOGLE SEARCH (4 LINKS) ---
+# --- HELPER: GOOGLE SEARCH (STRICT TELEGRAM ONLY) ---
 def google_search_api(query):
     api_key = os.getenv("GOOGLE_API_KEY")
     cx = os.getenv("GOOGLE_CX_ID")
-    search_query = f"{query} hindi dubbed telegram channel t.me"
+    
+    # "site:t.me" forces Google to return only Telegram links
+    search_query = f"{query} hindi dubbed site:t.me"
     
     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={cx}&q={search_query}"
-    links = []
+    valid_links = []
     
     try:
         data = requests.get(url).json()
         if 'items' in data:
-            for item in data['items'][:4]:
-                links.append(item['link'])
+            # Check top 10 results to find 4 valid ones
+            for item in data['items']:
+                link = item['link']
+                
+                # Strict Python Filter: Must contain t.me and NOT contain facebook/instagram
+                if "t.me/" in link and "facebook.com" not in link and "instagram.com" not in link:
+                    valid_links.append(link)
+                
+                # Stop once we have 4 good links
+                if len(valid_links) >= 4:
+                    break
     except Exception as e:
         print(f"Google Error: {e}")
     
-    if not links: links.append("https://t.me/")
-    return links
+    # Fallback
+    if not valid_links: valid_links.append("https://t.me/")
+    return valid_links
 
 def get_hd_anime_info(anime_name):
     try:
@@ -110,8 +118,11 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
 
 # --- ROUTES ---
 
+# UPTIME FIX: Allow both HEAD and GET requests
+@app.head("/")
 @app.get("/")
-def home(): return {"msg": "Anime API Online"}
+def home(): 
+    return {"message": "Anime API is Online"}
 
 @app.get("/api/search")
 async def search_anime(query: str):
@@ -128,16 +139,16 @@ async def search_anime(query: str):
             "data": {
                 "title": cached['title'], 
                 "links": links,
-                "website_link": cached['generated_url'] # ADDED BACK ✅
+                "website_link": cached['generated_url']
             },
-            "response_time": f"{time.time() - start:.2f}s" # ADDED BACK ✅
+            "response_time": f"{time.time() - start:.2f}s"
         }
 
     # 2. AI Clean Name
     try:
         chat = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": f"Extract official anime name from '{query}'. Output ONLY name."}],
-            model="llama-3.3-70b-versatile", # Reverted to standard fast model
+            model="llama-3.3-70b-versatile",
         )
         ai_name = chat.choices[0].message.content.strip()
     except: ai_name = query
@@ -146,7 +157,7 @@ async def search_anime(query: str):
     info = get_hd_anime_info(ai_name)
     if not info: return {"status": "error", "message": "Not Found"}
     
-    # 4. Get 4 Links
+    # 4. Get Strict Telegram Links
     tg_links = google_search_api(info['title'])
     
     slug = clean_query.replace(" ", "-")
@@ -170,13 +181,13 @@ async def search_anime(query: str):
 
     return {
         "status": "success", 
-        "source": "fetched_new",
+        "source": "fetched_new", 
         "data": {
             "title": info['title'], 
             "links": tg_links,
-            "website_link": view_url # ADDED BACK ✅
+            "website_link": view_url
         },
-        "response_time": f"{time.time() - start:.2f}s" # ADDED BACK ✅
+        "response_time": f"{time.time() - start:.2f}s"
     }
 
 @app.get("/view/{slug}", response_class=HTMLResponse)
@@ -197,7 +208,7 @@ async def view_page(slug: str, request: Request):
         
     return response
 
-# Action Route (IP Tracking)
+# Action Route
 @app.post("/api/action/{slug}/{action}")
 async def user_action(slug: str, action: str, request: Request):
     search_term = slug.replace("-", " ")
@@ -238,7 +249,7 @@ async def user_action(slug: str, action: str, request: Request):
     
     return {"status": "ok"}
 
-# --- ADMIN PANEL ---
+# --- ADMIN ---
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request, username: str = Depends(get_current_username)):
@@ -284,4 +295,3 @@ async def delete_anime(anime_id: str, username: str = Depends(get_current_userna
     try: await collection.delete_one({"_id": ObjectId(anime_id)})
     except: pass 
     return RedirectResponse(url="/admin", status_code=303)
-    
