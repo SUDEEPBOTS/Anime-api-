@@ -3,14 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ anime.title }} | Open Link</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <title>{{ anime.title }} | Download</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* CSS VARIABLES FOR THEME */
+        :root {
+            --bg-color: #f4f4f4; /* Default Light */
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border-color: #e0e0e0;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --poster-border: rgba(0,0,0,0.1);
+            --tag-bg: #eeeeee;
+            --tag-text: #555;
+            --btn-glass-bg: rgba(0,0,0,0.05);
+            --btn-glass-text: #333;
+            --btn-glass-border: rgba(0,0,0,0.1);
+        }
+
+        /* DARK MODE VARIABLES */
+        [data-theme="dark"] {
+            --bg-color: #050505;
+            --card-bg: #0a0a0a;
+            --text-main: #e0e0e0;
+            --text-sub: #aaaaaa;
+            --border-color: #1f1f1f;
+            --shadow: 0 40px 80px rgba(0,0,0,0.6);
+            --poster-border: rgba(255, 215, 0, 0.15);
+            --tag-bg: #111;
+            --tag-text: #888;
+            --btn-glass-bg: rgba(20, 10, 10, 0.6);
+            --btn-glass-text: #e0e0e0;
+            --btn-glass-border: rgba(255, 60, 60, 0.2);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
-            background-color: #000;
-            color: #ccc;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
@@ -18,302 +50,249 @@
             justify-content: center;
             padding: 20px;
             overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
         }
 
-        /* Background Blur Image */
-        .bg-image {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('{{ anime.thumbnail }}');
-            background-size: cover;
-            background-position: center;
-            filter: blur(40px) brightness(0.2);
-            transform: scale(1.2);
-            z-index: -1;
+        /* THEME TOGGLE BUTTON */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 100;
         }
 
-        /* Main Card Container */
         .card-container {
-            background: #0a0a0a;
+            background: var(--card-bg);
             width: 100%;
             max-width: 850px;
             border-radius: 24px;
             padding: 40px;
-            border: 1px solid #1f1f1f;
-            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
             display: flex;
             gap: 40px;
             align-items: flex-start;
             position: relative;
+            transition: background 0.3s, border 0.3s;
         }
 
-        /* LEFT SIDE: POSTER */
         .poster-box {
             flex-shrink: 0;
             width: 240px;
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid rgba(255, 215, 0, 0.15);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 1px solid var(--poster-border);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
         .poster-box img { width: 100%; height: auto; display: block; }
 
-        /* RIGHT SIDE: INFO */
-        .info-box {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
+        .info-box { flex-grow: 1; display: flex; flex-direction: column; }
 
-        /* Typography */
         h1 {
             font-family: 'Cinzel', serif;
             font-size: 32px;
-            color: #d4c598;
+            color: #d4c598; /* Gold always looks good */
             margin-bottom: 5px;
-            font-weight: 400;
         }
-        .subtitle { font-size: 14px; color: #666; margin-bottom: 20px; letter-spacing: 0.5px; }
+        [data-theme="light"] h1 { color: #bfa568; } /* Darker gold for light mode */
+
+        .subtitle { font-size: 14px; color: var(--text-sub); margin-bottom: 20px; }
         
         .desc {
-            font-size: 13px; color: #aaa; line-height: 1.6; margin-bottom: 25px;
+            font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 25px;
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
         }
 
-        /* Visual Tags */
-        .tags-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .tag {
-            background: #111; border: 1px solid #222;
-            color: #888; padding: 4px 12px; border-radius: 20px;
-            font-size: 11px; display: flex; align-items: center; gap: 5px;
+            background: var(--tag-bg); border: 1px solid var(--border-color);
+            color: var(--tag-text); padding: 4px 12px; border-radius: 20px;
+            font-size: 11px; margin-right: 5px; margin-bottom: 10px; display: inline-block;
         }
 
-        /* SECTIONS Label */
         .label {
-            font-size: 11px; color: #fff; font-weight: 700; letter-spacing: 1px;
+            font-size: 11px; color: var(--text-main); font-weight: 700; letter-spacing: 1px;
             margin-top: 25px; margin-bottom: 12px; text-transform: uppercase;
         }
 
-        /* MAIN BUTTONS (OPEN & SUPPORT) */
-        .btns-stack { display: flex; flex-direction: column; gap: 12px; }
+        /* BUTTONS */
+        .btns-stack { display: flex; flex-direction: column; gap: 10px; }
         
         .btn-main {
-            width: 100%; padding: 14px; border-radius: 30px;
-            text-align: center; font-size: 14px; font-weight: 600; text-transform: uppercase;
+            width: 100%; padding: 12px; border-radius: 30px;
+            text-align: center; font-size: 13px; font-weight: 600; text-transform: uppercase;
             text-decoration: none; border: none; cursor: pointer; transition: 0.3s;
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
 
-        /* OPEN Button (Blue) */
+        /* 4 LINKS STYLING */
         .btn-open {
             background: linear-gradient(90deg, #355c7d, #6c5b7b);
             color: white;
-            box-shadow: 0 4px 15px rgba(53, 92, 125, 0.3);
+            box-shadow: 0 4px 10px rgba(53, 92, 125, 0.3);
         }
-        .btn-open:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .btn-open:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-        /* SUPPORT Button (Glass Red) */
         .btn-support {
-            background: rgba(20, 10, 10, 0.6);
-            color: #e0e0e0;
-            border: 1px solid rgba(255, 60, 60, 0.2);
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.05);
-            backdrop-filter: blur(5px);
+            background: var(--btn-glass-bg);
+            color: var(--btn-glass-text);
+            border: 1px solid var(--btn-glass-border);
         }
-        .btn-support:hover { border-color: rgba(255, 60, 60, 0.6); color: white; background: rgba(40, 10, 10, 0.8); }
-
-        /* ACTIONS GRID (Stats) */
+        
+        /* ACTIONS GRID */
         .grid-actions {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
         }
         
         .stat-btn {
-            height: 50px; background: #111; border: 1px solid #222; border-radius: 12px;
+            height: 45px; background: var(--tag-bg); border: 1px solid var(--border-color); border-radius: 12px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: #777; font-size: 12px; cursor: pointer; transition: 0.3s;
-            text-decoration: none; user-select: none;
+            color: var(--text-sub); font-size: 12px; cursor: pointer; transition: 0.3s;
         }
-        .stat-btn span { font-size: 16px; margin-bottom: 2px; }
-        .stat-btn b { font-weight: normal; font-size: 10px; color: #555; }
+        .stat-btn b { font-size: 10px; }
         
-        .stat-btn:hover { border-color: #444; color: white; background: #1a1a1a; }
-        .stat-btn:hover b { color: #aaa; }
-
-        /* --- ACTIVE STATES FOR LIKE/DISLIKE (NEW) --- */
+        /* ACTIVE STATES */
         .btn-like.active { border-color: #4CAF50; color: #4CAF50; background: rgba(76, 175, 80, 0.1); }
-        .btn-like.active b { color: #4CAF50; }
-
         .btn-dislike.active { border-color: #ff4d6d; color: #ff4d6d; background: rgba(255, 77, 109, 0.1); }
-        .btn-dislike.active b { color: #ff4d6d; }
 
-        /* CONTACT & OWNER ROW */
-        .footer-btns-row {
-            display: flex; gap: 10px; margin-top: 25px;
-        }
+        /* FOOTER & DISCLAIMER */
+        .footer-btns-row { display: flex; gap: 10px; margin-top: 25px; }
         .btn-footer {
             flex: 1; padding: 10px; border-radius: 8px; font-size: 11px; text-transform: uppercase;
-            text-align: center; text-decoration: none; color: #aaa; background: #0f0f0f;
-            border: 1px solid #222; transition: 0.3s;
-        }
-        .btn-footer:hover { background: #1a1a1a; color: white; border-color: #444; }
-        
-        .btn-owner {
-            border-color: rgba(212, 197, 152, 0.3); color: #d4c598;
-        }
-        .btn-owner:hover { background: rgba(212, 197, 152, 0.1); border-color: #d4c598; }
-
-        /* COLORFUL THANKS MESSAGE */
-        .thanks-msg {
-            margin-top: 30px; text-align: center; font-size: 14px; font-weight: 600;
-            background: linear-gradient(to right, #ff00cc, #3333ff, #00ccff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            opacity: 0.9; letter-spacing: 1px;
+            text-align: center; text-decoration: none; color: var(--text-sub);
+            border: 1px solid var(--border-color); background: var(--tag-bg);
         }
 
-        /* Disclaimer Small */
-        .disclaimer-small {
-            margin-top: 10px; font-size: 9px; color: #444; text-align: center;
+        .disclaimer-red {
+            margin-top: 30px; font-size: 11px; color: #ff0000; text-align: center;
+            font-weight: bold; border-top: 1px solid #ff0000; padding-top: 10px;
         }
 
-        /* MOBILE FIX */
         @media (max-width: 700px) {
             .card-container { flex-direction: column; align-items: center; text-align: center; padding: 25px; }
             .poster-box { width: 180px; margin-bottom: 20px; }
             .info-box { width: 100%; }
-            .tags-row { justify-content: center; }
-            .grid-actions { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
-<body>
+<body data-theme="light">
 
-    <div class="bg-image"></div>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
 
     <div class="card-container">
-        
         <div class="poster-box">
             <img src="{{ anime.thumbnail }}" alt="Poster">
         </div>
 
         <div class="info-box">
-            
             <h1>{{ anime.title }}</h1>
             <div class="subtitle">Search Result</div>
-            
             <p class="desc">{{ anime.synopsis }}</p>
 
             <div class="tags-row">
-                <div class="tag">HD Quality</div>
-                <div class="tag">Dual Audio</div>
-                <div class="tag">Telegram</div>
+                <span class="tag">HD Quality</span>
+                <span class="tag">Dual Audio</span>
+                <span class="tag">Telegram</span>
             </div>
 
-            <div class="label">LINKS</div>
+            <div class="label">DOWNLOAD LINKS ({{ anime.telegram_links|length }})</div>
             <div class="btns-stack">
-                <a href="{{ anime.telegram_link }}" target="_blank" class="btn-main btn-open">
-                    OPEN 🚀
+                {% for link in anime.telegram_links %}
+                <a href="{{ link }}" target="_blank" class="btn-main btn-open">
+                    OPEN SOURCE {{ loop.index }} 🚀
                 </a>
+                {% endfor %}
                 
                 <a href="https://t.me/SPSUPPORTT1" target="_blank" class="btn-main btn-support">
-                    SUPPORT 🛠️
+                    SUPPORT GROUP 🛠️
                 </a>
             </div>
 
-            <div class="label">ACTIONS & STATS</div>
+            <div class="label">STATS</div>
             <div class="grid-actions">
-                <div class="stat-btn">
-                    <span>👁️</span>
-                    <b id="view-cnt">{{ anime.views }}</b>
-                </div>
-
-                <div class="stat-btn btn-like" onclick="act('likes')">
-                    <span>👍</span>
-                    <b id="like-cnt">{{ anime.likes }}</b>
-                </div>
-
-                <div class="stat-btn btn-dislike" onclick="act('dislikes')">
-                    <span>👎</span>
-                    <b id="dislike-cnt">{{ anime.dislikes }}</b>
-                </div>
-                
-                <div class="stat-btn" onclick="act('reports')" style="color: #ff4444;">
-                    <span>⚠️</span>
-                    <b>Report</b>
-                </div>
+                <div class="stat-btn"><span>👁️</span><b id="view-cnt">{{ anime.views }}</b></div>
+                <div class="stat-btn btn-like" onclick="act('likes')"><span>👍</span><b id="like-cnt">{{ anime.likes }}</b></div>
+                <div class="stat-btn btn-dislike" onclick="act('dislikes')"><span>👎</span><b id="dislike-cnt">{{ anime.dislikes }}</b></div>
+                <div class="stat-btn" onclick="act('reports')" style="color: #ff4444;"><span>⚠️</span><b>Report</b></div>
             </div>
 
             <div class="footer-btns-row">
-                <a href="#" class="btn-footer">Contact</a> <a href="https://t.me/Kaito_3_2" target="_blank" class="btn-footer btn-owner">Owner 👑</a>
+                <a href="#" class="btn-footer">Contact</a>
+                <a href="https://t.me/Kaito_3_2" target="_blank" class="btn-footer">Owner 👑</a>
             </div>
 
-            <div class="thanks-msg">
-                Thank You For Visiting! ❤️
-            </div>
-            
-            <div class="disclaimer-small">
-                We do not host any content. All links are from Google.
+            <div class="disclaimer-red">
+                DISCLAIMER: WE DO NOT HOST ANY CONTENT. <br>
+                ALL LINKS ARE SEARCHED AUTOMATICALLY FROM GOOGLE. <br>
+                IF A LINK IS BROKEN, PLEASE USE THE NEXT BUTTON.
             </div>
 
         </div>
     </div>
 
     <script>
+        // Theme Toggle Logic
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.querySelector('.theme-toggle');
+            if (body.getAttribute('data-theme') === 'light') {
+                body.setAttribute('data-theme', 'dark');
+                btn.innerHTML = '🌙';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                btn.innerHTML = '☀️';
+            }
+        }
+
+        // Action Logic (Like/Dislike)
         function act(action) {
             const slug = window.location.pathname.split("/").pop();
-            
-            // Elements select kar rahe hain
             const likeBtn = document.querySelector('.btn-like');
             const dislikeBtn = document.querySelector('.btn-dislike');
             const likeCount = document.getElementById('like-cnt');
             const dislikeCount = document.getElementById('dislike-cnt');
 
-            // Backend ko call karo
             fetch(`/api/action/${slug}/${action}`, { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 let l_val = parseInt(likeCount.innerText);
                 let d_val = parseInt(dislikeCount.innerText);
 
-                // --- LOGIC TO UPDATE UI INSTANTLY BASED ON BACKEND RESPONSE ---
-                
                 if (data.status === 'liked') {
-                    // New Like: Like Badhao, Green karo
                     likeCount.innerText = l_val + 1;
                     likeBtn.classList.add('active');
-                    
-                    // Agar Dislike active tha, toh usko hatao
                     if (dislikeBtn.classList.contains('active')) {
                         dislikeCount.innerText = d_val - 1;
                         dislikeBtn.classList.remove('active');
                     }
                 } 
                 else if (data.status === 'removed_like') {
-                    // Like Undo kiya
                     likeCount.innerText = l_val - 1;
                     likeBtn.classList.remove('active');
                 }
                 else if (data.status === 'disliked') {
-                    // New Dislike: Dislike Badhao, Red karo
                     dislikeCount.innerText = d_val + 1;
                     dislikeBtn.classList.add('active');
-                    
-                    // Agar Like active tha, toh usko hatao
                     if (likeBtn.classList.contains('active')) {
                         likeCount.innerText = l_val - 1;
                         likeBtn.classList.remove('active');
                     }
                 }
                 else if (data.status === 'removed_dislike') {
-                    // Dislike Undo kiya
                     dislikeCount.innerText = d_val - 1;
                     dislikeBtn.classList.remove('active');
                 }
                 else if (data.status === 'reported') {
-                    alert("Report Sent to Admin! 🛡️");
+                    alert("Reported to Admin!");
                 }
-            })
-            .catch(err => console.error("Error:", err));
+            });
         }
     </script>
 
