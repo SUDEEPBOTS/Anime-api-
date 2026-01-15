@@ -1,68 +1,92 @@
 import os
 import time
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse
+import requests
+from fastapi import FastAPI, Request, HTTPException, Depends, status, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from groq import Groq
-from googlesearch import search
-import requests
+from bson import ObjectId
 
-# 1. LOAD CONFIG
+# 1. SETUP & CONFIG
 load_dotenv()
-app = FastAPI()
+app = FastAPI(title="Anime Discovery API")
+security = HTTPBasic()
 templates = Jinja2Templates(directory="templates")
 
-# 2. DATABASE SETUP
+# DB Connection
 client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
 db = client.anime_db
 collection = db.links
 
-# 3. AI & TOOLS SETUP
+# AI Setup (Groq)
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# --- SECURITY (Admin Login) ---
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_user = os.getenv("ADMIN_USER")
+    correct_pass = os.getenv("ADMIN_PASS")
+    if credentials.username != correct_user or credentials.password != correct_pass:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 # --- HELPER FUNCTIONS ---
 
 def get_hd_anime_info(anime_name):
-    """Jikan API se HD Photo aur Title layega"""
+    """Jikan API se HD Photo aur Synopsis layega"""
     try:
+        # Jikan Free API
         url = f"https://api.jikan.moe/v4/anime?q={anime_name}&limit=1"
-        response = requests.get(url).json()
-        data = response['data'][0]
+        res = requests.get(url).json()
+        data = res['data'][0]
         return {
-            "title": data['title_english'] if data.get('title_english') else data['title'],
-            "synopsis": data['synopsis'][:150] + "...", # Thodi si story
+            "title": data.get('title_english', data['title']),
+            "synopsis": data.get('synopsis', 'No description available.')[:300] + "...",
             "image": data['images']['jpg']['large_image_url']
         }
-    except:
+    except Exception as e:
+        print(f"Jikan Error: {e}")
         return None
 
-def find_telegram_link(anime_name):
-    """Google se Telegram link dhundega"""
-    query = f"{anime_name} hindi dubbed telegram channel t.me"
+def google_search_api(query):
+    """Google Custom Search API se Link layega"""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    cx = os.getenv("GOOGLE_CX_ID")
+    
+    # Query optimized for Telegram Channels
+    search_query = f"{query} hindi dubbed telegram channel t.me"
+    
+    url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={cx}&q={search_query}"
+    
     try:
-        # Google search se top 5 result me se pehla t.me link uthayega
-        for url in search(query, num_results=5):
-            if "t.me/" in url:
-                return url
-        return "https://t.me/" # Fallback agar nahi mila
-    except:
+        data = requests.get(url).json()
+        if 'items' in data:
+            # Top result return karega
+            return data['items'][0]['link']
+        return "https://t.me/" # Fallback
+    except Exception as e:
+        print(f"Google API Error: {e}")
         return "https://t.me/"
 
-# --- API ROUTES ---
+# --- API ROUTES (PUBLIC) ---
 
 @app.get("/")
 def home():
-    return {"message": "Anime API is Running. Use /api/search?query=Naruto"}
+    return {"message": "Anime API is Online. Use /api/search?query=AnimeName"}
 
 @app.get("/api/search")
-async def search_anime(query: str, request: Request):
+async def search_anime(query: str):
     start = time.time()
     clean_query = query.lower().strip()
 
-    # 1. DATABASE CHECK (Cache)
+    # STEP 1: Check Database (Cache)
     cached = await collection.find_one({"search_term": clean_query})
     
     if cached:
@@ -73,58 +97,52 @@ async def search_anime(query: str, request: Request):
                 "title": cached['title'],
                 "link": cached['generated_url'],
                 "views": cached.get('views', 0)
-            }
+            },
+            "response_time": f"{time.time() - start:.2f}s"
         }
 
-    # 2. AGAR DB MEIN NAHI HAI -> PROCESS START
+    # STEP 2: Not in DB -> Use AI to Clean Name
+    try:
+        chat = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": f"Extract the official anime name only from this query: '{query}'. Output ONLY the name, nothing else."}],
+            model="llama3-8b-8192",
+        )
+        ai_name = chat.choices[0].message.content.strip()
+    except:
+        ai_name = query # Fallback if AI fails
+
+    # STEP 3: Fetch Info (Jikan) & Link (Google)
+    info = get_hd_anime_info(ai_name)
     
-    # A. AI se Query fix karwate hain (Optional step for accuracy)
-    chat_completion = groq_client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": "Extract only the main Anime name from the user input. Output ONLY the name."},
-            {"role": "user", "content": query}
-        ],
-        model="llama3-8b-8192",
-    )
-    ai_anime_name = chat_completion.choices[0].message.content.strip()
+    if not info:
+        return {"status": "error", "message": "Anime details not found."}
+    
+    tg_link = google_search_api(info['title'])
 
-    # B. HD Info Fetch (Image & Story)
-    anime_info = get_hd_anime_info(ai_anime_name)
-    if not anime_info:
-        return {"status": "error", "message": "Anime not found"}
-
-    # C. Telegram Link Fetch
-    tg_link = find_telegram_link(anime_info['title'])
-
-    # D. Save to DB
+    # STEP 4: Save to Database
     slug = clean_query.replace(" ", "-")
     view_url = f"{os.getenv('BASE_URL')}/view/{slug}"
     
-    new_entry = {
+    new_data = {
         "search_term": clean_query,
-        "title": anime_info['title'],
-        "synopsis": anime_info['synopsis'],
-        "thumbnail": anime_info['image'],
+        "title": info['title'],
+        "synopsis": info['synopsis'],
+        "thumbnail": info['image'],
         "telegram_link": tg_link,
         "generated_url": view_url,
-        "views": 0,
-        "likes": 0,
-        "dislikes": 0
+        "views": 0, "likes": 0, "dislikes": 0, "reports": 0
     }
     
-    await collection.insert_one(new_entry)
+    await collection.insert_one(new_data)
 
     return {
-        "status": "success",
-        "source": "new_fetched",
-        "data": {
-            "title": new_entry['title'],
-            "link": view_url
-        },
-        "time": f"{time.time() - start:.2f}s"
+        "status": "success", 
+        "source": "fetched_new", 
+        "data": {"title": info['title'], "link": view_url},
+        "response_time": f"{time.time() - start:.2f}s"
     }
 
-# --- WEBSITE INTERFACE ---
+# --- WEBSITE ROUTES (VIEW PAGE) ---
 
 @app.get("/view/{slug}", response_class=HTMLResponse)
 async def view_page(slug: str, request: Request):
@@ -132,19 +150,76 @@ async def view_page(slug: str, request: Request):
     anime = await collection.find_one({"search_term": search_term})
     
     if not anime:
-        return "Anime Not Found"
+        return templates.TemplateResponse("404.html", {"request": request}) # 404 page bana lena optionally
 
-    # View Count Update
+    # Increment Views
     await collection.update_one({"_id": anime["_id"]}, {"$inc": {"views": 1}})
 
     return templates.TemplateResponse("view.html", {"request": request, "anime": anime})
 
-# Like/Dislike/Report Logic (Shortened for brevity)
+# Action Route (Like/Dislike/Report)
 @app.post("/api/action/{slug}/{action}")
 async def user_action(slug: str, action: str):
     search_term = slug.replace("-", " ")
-    if action in ["likes", "dislikes", "reports"]:
+    valid_actions = ["likes", "dislikes", "reports"]
+    
+    if action in valid_actions:
         await collection.update_one({"search_term": search_term}, {"$inc": {action: 1}})
-        return {"status": "ok"}
-    return {"status": "error"}
-  
+        return {"status": "ok", "action": action}
+    return {"status": "error", "message": "Invalid action"}
+
+# --- ADMIN PANEL ROUTES ---
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_panel(request: Request, username: str = Depends(get_current_username)):
+    # Fetch all animes sorted by newest first
+    animes = await collection.find().sort("_id", -1).to_list(200)
+    return templates.TemplateResponse("admin.html", {
+        "request": request, 
+        "animes": animes, 
+        "user": username
+    })
+
+# Manual Add / Update Route
+@app.post("/admin/add")
+async def add_anime_manual(
+    search_keyword: str = Form(...),
+    title: str = Form(...),
+    thumbnail: str = Form(...),
+    telegram_link: str = Form(...),
+    synopsis: str = Form("No description added."),
+    username: str = Depends(get_current_username)
+):
+    clean_query = search_keyword.lower().strip()
+    slug = clean_query.replace(" ", "-")
+    view_url = f"{os.getenv('BASE_URL')}/view/{slug}"
+
+    # Check if exists (Update vs Insert)
+    existing = await collection.find_one({"search_term": clean_query})
+    
+    data_payload = {
+        "search_term": clean_query,
+        "title": title,
+        "thumbnail": thumbnail,
+        "telegram_link": telegram_link,
+        "synopsis": synopsis,
+        "generated_url": view_url
+    }
+
+    if existing:
+        # Update existing
+        await collection.update_one({"search_term": clean_query}, {"$set": data_payload})
+    else:
+        # Create new default fields
+        data_payload.update({"views": 0, "likes": 0, "dislikes": 0, "reports": 0})
+        await collection.insert_one(data_payload)
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+@app.get("/admin/delete/{anime_id}")
+async def delete_anime(anime_id: str, username: str = Depends(get_current_username)):
+    try:
+        await collection.delete_one({"_id": ObjectId(anime_id)})
+    except:
+        pass # Handle invalid ID error
+    return RedirectResponse(url="/admin", status_code=303)
