@@ -6,3 +6,4 @@ groq
 googlesearch-python
 jinja2
 requests
+python-multipart
