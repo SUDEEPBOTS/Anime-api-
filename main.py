@@ -43,7 +43,7 @@ def send_telegram_log(title, thumbnail, synopsis, view_link):
     sc_title = to_small_caps(title)
     sc_synopsis = to_small_caps(synopsis[:200] + "...")
     
-    # HTML Caption with Blue Link (Hyperlink)
+    # HTML Caption
     caption = (
         f"<b><a href='{view_link}'>✨ {sc_title} ✨</a></b>\n\n"
         f"📖 {sc_synopsis}\n\n"
@@ -80,13 +80,11 @@ def google_search_api(query):
     try:
         data = requests.get(url).json()
         if 'items' in data:
-            # Get Top 4 Links
             for item in data['items'][:4]:
                 links.append(item['link'])
     except Exception as e:
         print(f"Google Error: {e}")
     
-    # Fallback if empty
     if not links: links.append("https://t.me/")
     return links
 
@@ -123,19 +121,23 @@ async def search_anime(query: str):
     # 1. Check DB
     cached = await collection.find_one({"search_term": clean_query})
     if cached:
-        # Compatibility: Ensure links is a list
         links = cached.get('telegram_links', [cached.get('telegram_link', '#')])
         return {
-            "status": "success", "source": "database",
-            "data": {"title": cached['title'], "links": links},
-            "time": f"{time.time() - start:.2f}s"
+            "status": "success", 
+            "source": "database",
+            "data": {
+                "title": cached['title'], 
+                "links": links,
+                "website_link": cached['generated_url'] # ADDED BACK ✅
+            },
+            "response_time": f"{time.time() - start:.2f}s" # ADDED BACK ✅
         }
 
     # 2. AI Clean Name
     try:
         chat = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": f"Extract official anime name from '{query}'. Output ONLY name."}],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-versatile", # Reverted to standard fast model
         )
         ai_name = chat.choices[0].message.content.strip()
     except: ai_name = query
@@ -155,7 +157,7 @@ async def search_anime(query: str):
         "title": info['title'],
         "synopsis": info['synopsis'],
         "thumbnail": info['image'],
-        "telegram_links": tg_links, # Saving list
+        "telegram_links": tg_links,
         "generated_url": view_url,
         "views": 0, "likes": 0, "dislikes": 0, "reports": 0,
         "liked_ips": [], "disliked_ips": []
@@ -166,7 +168,16 @@ async def search_anime(query: str):
     # 5. SEND TELEGRAM LOG
     send_telegram_log(info['title'], info['image'], info['synopsis'], view_url)
 
-    return {"status": "success", "data": {"title": info['title'], "links": tg_links}}
+    return {
+        "status": "success", 
+        "source": "fetched_new",
+        "data": {
+            "title": info['title'], 
+            "links": tg_links,
+            "website_link": view_url # ADDED BACK ✅
+        },
+        "response_time": f"{time.time() - start:.2f}s" # ADDED BACK ✅
+    }
 
 @app.get("/view/{slug}", response_class=HTMLResponse)
 async def view_page(slug: str, request: Request):
@@ -174,7 +185,6 @@ async def view_page(slug: str, request: Request):
     anime = await collection.find_one({"search_term": search_term})
     if not anime: return templates.TemplateResponse("404.html", {"request": request})
 
-    # Ensure links is always a list for the template
     if "telegram_links" not in anime:
         anime["telegram_links"] = [anime.get("telegram_link", "#")]
 
@@ -248,7 +258,6 @@ async def add_anime_manual(
     slug = clean_query.replace(" ", "-")
     view_url = f"{os.getenv('BASE_URL')}/view/{slug}"
     
-    # Manual add ko bhi list mein convert kar rahe hain
     links_list = [telegram_link] 
 
     existing = await collection.find_one({"search_term": clean_query})
@@ -267,9 +276,7 @@ async def add_anime_manual(
         data.update({"views": 0, "likes": 0, "dislikes": 0, "reports": 0, "liked_ips": [], "disliked_ips": []})
         await collection.insert_one(data)
     
-    # Send Log for Manual Add too
     send_telegram_log(title, thumbnail, synopsis, view_url)
-
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.get("/admin/delete/{anime_id}")
@@ -277,3 +284,4 @@ async def delete_anime(anime_id: str, username: str = Depends(get_current_userna
     try: await collection.delete_one({"_id": ObjectId(anime_id)})
     except: pass 
     return RedirectResponse(url="/admin", status_code=303)
+    
