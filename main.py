@@ -32,19 +32,16 @@ def to_small_caps(text):
     }
     return "".join(mapping.get(char, char) for char in text.lower())
 
-# --- HELPER: TELEGRAM NOTIFICATION (UPDATED) ---
+# --- HELPER: TELEGRAM NOTIFICATION ---
 def send_telegram_log(title, thumbnail, synopsis, view_link):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_LOGGER_ID")
     
     if not token or not chat_id: return
 
-    # Convert Synopsis to Small Caps
+    sc_title = to_small_caps(title)
     sc_synopsis = to_small_caps(synopsis[:250] + "...")
     
-    # HTML Caption: 
-    # 1. Title is the Blue Link
-    # 2. Story in Small Caps
     caption = (
         f"<b><a href='{view_link}'>{title.upper()}</a></b>\n\n"
         f"📖 {sc_synopsis}"
@@ -56,7 +53,7 @@ def send_telegram_log(title, thumbnail, synopsis, view_link):
         "photo": thumbnail,
         "caption": caption,
         "parse_mode": "HTML",
-        "has_spoiler": True  # <--- Photo Spoiler (Blur) kar dega
+        "has_spoiler": True
     }
     try: requests.post(url, json=payload)
     except Exception as e: print(f"Telegram Log Error: {e}")
@@ -67,49 +64,63 @@ def get_client_ip(request: Request):
     if x_forwarded: return x_forwarded.split(",")[0]
     return request.client.host
 
-# --- HELPER: GOOGLE SEARCH (STRICT TELEGRAM ONLY) ---
+# --- HELPER: GOOGLE SEARCH (WITH DEBUG LOGS) ---
 def google_search_api(query):
+    print(f"🔍 Google Search Start for: {query}") # DEBUG
+    
     api_key = os.getenv("GOOGLE_API_KEY")
     cx = os.getenv("GOOGLE_CX_ID")
     
-    # "site:t.me" forces Google to return only Telegram links
     search_query = f"{query} hindi dubbed site:t.me"
-    
     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={cx}&q={search_query}"
+    
     valid_links = []
     
     try:
-        data = requests.get(url).json()
+        response = requests.get(url)
+        print(f"📡 Google API Status Code: {response.status_code}") # DEBUG
+        
+        # AGAR ERROR AAYA TOH PRINT KAREGA
+        if response.status_code != 200:
+            print(f"❌ Google API Error Response: {response.text}")
+            
+        data = response.json()
         if 'items' in data:
-            # Check top 10 results to find 4 valid ones
             for item in data['items']:
                 link = item['link']
-                
-                # Strict Python Filter: Must contain t.me and NOT contain facebook/instagram
                 if "t.me/" in link and "facebook.com" not in link and "instagram.com" not in link:
                     valid_links.append(link)
-                
-                # Stop once we have 4 good links
                 if len(valid_links) >= 4:
                     break
     except Exception as e:
-        print(f"Google Error: {e}")
+        print(f"❌ Google Exception: {e}")
     
-    # Fallback
-    if not valid_links: valid_links.append("https://t.me/")
+    if not valid_links: 
+        print("⚠️ No valid Telegram links found by Google, using fallback.")
+        valid_links.append("https://t.me/")
+        
+    print(f"✅ Found {len(valid_links)} Links")
     return valid_links
 
 def get_hd_anime_info(anime_name):
+    print(f"🎌 Jikan (Anime Info) Search: {anime_name}") # DEBUG
     try:
         url = f"https://api.jikan.moe/v4/anime?q={anime_name}&limit=1"
-        res = requests.get(url).json()
-        data = res['data'][0]
+        res = requests.get(url)
+        print(f"📡 Jikan Status: {res.status_code}") # DEBUG
+        
+        if res.status_code != 200:
+             print(f"❌ Jikan Error: {res.text}")
+             
+        data = res.json()['data'][0]
         return {
             "title": data.get('title_english', data['title']),
             "synopsis": data.get('synopsis', 'No desc')[:300] + "...",
             "image": data['images']['jpg']['large_image_url']
         }
-    except: return None
+    except Exception as e: 
+        print(f"❌ Jikan Exception: {e}")
+        return None
 
 # --- SECURITY ---
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
@@ -121,7 +132,6 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
 
 # --- ROUTES ---
 
-# UPTIME FIX: Allow both HEAD and GET requests
 @app.head("/")
 @app.get("/")
 def home(): 
@@ -131,10 +141,12 @@ def home():
 async def search_anime(query: str):
     start = time.time()
     clean_query = query.lower().strip()
+    print(f"\n🚀 NEW REQUEST: {clean_query}") # DEBUG
 
     # 1. Check DB
     cached = await collection.find_one({"search_term": clean_query})
     if cached:
+        print("✅ Found in Database")
         links = cached.get('telegram_links', [cached.get('telegram_link', '#')])
         return {
             "status": "success", 
@@ -149,16 +161,22 @@ async def search_anime(query: str):
 
     # 2. AI Clean Name
     try:
+        print("🧠 Calling Groq AI...")
         chat = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": f"Extract official anime name from '{query}'. Output ONLY name."}],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-versatile", # Same model requested
         )
         ai_name = chat.choices[0].message.content.strip()
-    except: ai_name = query
+        print(f"🧠 AI extracted name: {ai_name}")
+    except Exception as e: 
+        print(f"⚠️ Groq Error: {e}")
+        ai_name = query
 
     # 3. Fetch Data
     info = get_hd_anime_info(ai_name)
-    if not info: return {"status": "error", "message": "Not Found"}
+    if not info: 
+        print("❌ Anime Info Not Found in Jikan")
+        return {"status": "error", "message": "Not Found"}
     
     # 4. Get Strict Telegram Links
     tg_links = google_search_api(info['title'])
@@ -179,7 +197,7 @@ async def search_anime(query: str):
     
     await collection.insert_one(new_data)
     
-    # 5. SEND TELEGRAM LOG (SPOILER + LINKED TITLE)
+    # 5. SEND TELEGRAM LOG
     send_telegram_log(info['title'], info['image'], info['synopsis'], view_url)
 
     return {
@@ -272,7 +290,8 @@ async def add_anime_manual(
     slug = clean_query.replace(" ", "-")
     view_url = f"{os.getenv('BASE_URL')}/view/{slug}"
     
-    links_list = [telegram_link] 
+    # Comma separation for manual entry
+    links_list = [link.strip() for link in telegram_link.split(",")]
 
     existing = await collection.find_one({"search_term": clean_query})
     data = {
@@ -290,7 +309,6 @@ async def add_anime_manual(
         data.update({"views": 0, "likes": 0, "dislikes": 0, "reports": 0, "liked_ips": [], "disliked_ips": []})
         await collection.insert_one(data)
     
-    # Log manually added anime too
     send_telegram_log(title, thumbnail, synopsis, view_url)
     return RedirectResponse(url="/admin", status_code=303)
 
